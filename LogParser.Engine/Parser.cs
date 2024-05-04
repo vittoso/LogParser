@@ -9,6 +9,8 @@ namespace LogParser.Engine
         ConcurrentDictionary<DateTime, ConcurrentBag<Event>> data;
         private bool parsingStarted = false;
 
+        public bool HasStarted { get; set; }
+
         public Parser()
         {
 
@@ -26,9 +28,6 @@ namespace LogParser.Engine
             foreach (string file in files)
             {
                 FileInfo f = new FileInfo(file);
-
-                if (f.Name != "Errors.log")
-                    continue;
 
                 switch (f.Extension.ToUpperInvariant())
                 {
@@ -96,8 +95,8 @@ namespace LogParser.Engine
             switch (fileInfo.Extension.ToUpperInvariant())
             {
                 case ".LOG":
-                    //  if (fileInfo.Name.ToUpperInvariant().StartsWith("BOOTAPPLICATION"))
-                    //      return new BootApplicationFileParser();
+                    if (fileInfo.Name.ToUpperInvariant().StartsWith("BOOTAPPLICATION"))
+                        return new BootApplicationFileParser();
                     if (fileInfo.Name.ToUpperInvariant().StartsWith("ERRORS"))
                         return new ErrorsFileParser();
                     return null;

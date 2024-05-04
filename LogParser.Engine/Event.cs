@@ -11,14 +11,18 @@
         public EventId Id { get; set; }
         public FileInfo FileInfo { get; private set; }
         public string Data { get; private set; }
+        public string Source { get; private set; }
+        public int? TID { get; private set; }
 
-        public static Event Create(DateTime dateTime, FileInfo fileInfo, string eventData)
+        public static Event Create(DateTime dateTime, FileInfo fileInfo, string source, int? threadId,  string eventData)
         {
             Event e = new Event();
 
             e.Id = new EventId(dateTime, Guid.NewGuid());
             e.FileInfo = fileInfo;
             e.Data = eventData;
+            e.Source = source;
+            e.TID = threadId;
 
             return e;
         }

@@ -5,6 +5,8 @@ namespace LogParser.Engine
 {
     internal class BootApplicationFileParser : IFileParser
     {
+
+        const string SOURCE = "BootApplication";
         public void Parse(FileInfo fileInfo, Action<Event> callBack)
         {
             using (StreamReader reader = fileInfo.OpenText())
@@ -36,7 +38,7 @@ namespace LogParser.Engine
 
                         if (acc.Count != 0) 
                         {
-                            Event ev = Event.Create(accDateTime, fileInfo, string.Join(Environment.NewLine, acc));
+                            Event ev = Event.Create(accDateTime, fileInfo, SOURCE, null, string.Join(Environment.NewLine, acc));
                             accDateTime = DateTime.MinValue;
                             acc.Clear();
                             callBack(ev);
@@ -55,7 +57,7 @@ namespace LogParser.Engine
 
                 if (acc.Count != 0)
                 {
-                    Event ev = Event.Create(accDateTime, fileInfo, string.Join(Environment.NewLine, acc));
+                    Event ev = Event.Create(accDateTime, fileInfo, SOURCE, null, string.Join(Environment.NewLine, acc));
                     accDateTime = DateTime.MinValue;
                     acc.Clear();
                     callBack(ev);

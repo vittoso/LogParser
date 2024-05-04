@@ -4,12 +4,15 @@ namespace LogParser.Engine
 {
     internal class ErrorsFileParser : IFileParser
     {
+
+        const string SOURCE = "Errors";
         public void Parse(FileInfo fileInfo, Action<Event> callBack)
         {
             using (StreamReader reader = fileInfo.OpenText())
             {
                 string? line;
                 DateTime accDateTime = DateTime.MinValue;
+                int? tid = null;
                 List<string> acc = [];
                 // Regular expression pattern to match the date and time format
                 string pattern = @"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
@@ -32,10 +35,21 @@ namespace LogParser.Engine
                             continue;
                         }
 
+                        // Parse TID
+                        // Use regular expression to find the number after "TID"
+                        Match match = Regex.Match(line, @"\[TID:(\d+)\]");
+                        if (match.Success)
+                        {
+                            // Extract and print the number
+                            tid = Convert.ToInt32(match.Groups[1].Value);
+                        }
+                        else
+                            tid = null;
+
 
                         if (acc.Count != 0)
                         {
-                            Event ev = Event.Create(accDateTime, fileInfo, string.Join(Environment.NewLine, acc));
+                            Event ev = Event.Create(accDateTime, fileInfo, SOURCE, tid, string.Join(Environment.NewLine, acc));
                             accDateTime = DateTime.MinValue;
                             acc.Clear();
                             callBack(ev);
@@ -54,7 +68,7 @@ namespace LogParser.Engine
 
                 if (acc.Count != 0)
                 {
-                    Event ev = Event.Create(accDateTime, fileInfo, string.Join(Environment.NewLine, acc));
+                    Event ev = Event.Create(accDateTime, fileInfo, SOURCE, tid, string.Join(Environment.NewLine, acc));
                     accDateTime = DateTime.MinValue;
                     acc.Clear();
                     callBack(ev);
