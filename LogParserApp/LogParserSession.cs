@@ -13,10 +13,9 @@ namespace LogParserApp
 
         public string FolderPath { get; }
 
-        public Task StartAsync()
+        public async Task StartAsync()
         {
-            p.StartParseFolder(FolderPath);
-            return Task.CompletedTask;
+            await Task.Run(() => p.StartParseFolder(FolderPath));
         }
 
         public Task CancelAsync()
@@ -24,7 +23,7 @@ namespace LogParserApp
             return parserCts.CancelAsync();
         }
 
-        public IReadOnlyDictionary<DateTime, IReadOnlyList<Event>> GetView(DateTime start, DateTime end)
+        public LogView GetView(DateTime start, DateTime end)
         {
             return p.GetView(start, end);
         }

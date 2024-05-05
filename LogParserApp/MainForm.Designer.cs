@@ -68,6 +68,7 @@
             ClientSize = new Size(1008, 661);
             Controls.Add(sessionView);
             Controls.Add(tsMain);
+            DoubleBuffered = true;
             Name = "MainForm";
             Text = "LogParser";
             tsMain.ResumeLayout(false);

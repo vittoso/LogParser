@@ -11,13 +11,13 @@ namespace LogParser.Engine.Test
         [ClassInitialize]
         public static async Task ClassInitialize(TestContext testContext)
         {
-            var dir = Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location);
+            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             outputDir = Path.Combine(dir, "Output");
             if (Directory.Exists(outputDir))
             {
                 Directory.Delete(outputDir, true);
             }
-                Directory.CreateDirectory(outputDir);
+            Directory.CreateDirectory(outputDir);
             ZipFile.ExtractToDirectory(Path.Combine(dir, "log.zip"), outputDir);
 
         }
@@ -31,12 +31,12 @@ namespace LogParser.Engine.Test
 
 
         [TestMethod]
-        public void StartParseFolder_OK()
+        public async Task StartParseFolder_OK()
         {
             Parser p = new Parser();
-            p.StartParseFolder(Path.Combine(outputDir, "log"));
+            await p.StartParseFolder(Path.Combine(outputDir, "log"));
 
-          var data =   p.GetView(new DateTime(2024, 04, 24, 14, 10, 0), DateTime.MaxValue);
+            var data = p.GetView(new DateTime(2024, 04, 24, 14, 10, 0), DateTime.MaxValue);
         }
     }
 }

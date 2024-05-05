@@ -11,6 +11,7 @@ namespace LogParserApp
             InitializeComponent();
 
 
+
             tsbOpen.Click += TsbOpen_Click;
             sessionView.Enabled = false;
 
@@ -55,14 +56,23 @@ namespace LogParserApp
 
                     CurrentSession = new LogParserSession(selectedPath);
                     this.Text = $"LogParser - [{selectedPath}]";
+
+
+                    WaitMessage.ShowWaitMessage(this, "Loading... Please wait");
                     await CurrentSession.StartAsync();
                     sessionView.Init(CurrentSession);
                     sessionView.Enabled = true;
+
+
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                WaitMessage.HideWaitMessage(this);
             }
         }
 

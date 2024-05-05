@@ -17,7 +17,7 @@ namespace LogParser.Engine
             data = new ConcurrentDictionary<DateTime, ConcurrentBag<Event>>();
         }
 
-        public void StartParseFolder(string folderPath, CancellationToken token = default(CancellationToken))
+        public async Task StartParseFolder(string folderPath, CancellationToken token = default(CancellationToken))
         {
             if (parsingStarted)
                 throw new Exception("Parsing already started");
@@ -64,18 +64,20 @@ namespace LogParser.Engine
 
             if (parsableFiles.Any())
             {
+                List<Task> taskList = new List<Task>(parsableFiles.Count);
                 foreach (var parsableFile in parsableFiles)
                 {
-                    parsableFile.Parse(data);
-
+                    taskList.Add(Task.Run(() => parsableFile.Parse(data, token), token));
 
                     if (token.IsCancellationRequested)
                         return;
                 }
+
+                await Task.WhenAll(taskList);
             }
         }
 
-        public IReadOnlyDictionary<DateTime, IReadOnlyList<Event>> GetView(DateTime start, DateTime end)
+        public LogView GetView(DateTime start, DateTime end)
         {
             Dictionary<DateTime, IReadOnlyList<Event>> d = new();
 
@@ -86,7 +88,7 @@ namespace LogParser.Engine
                 d[item.Key] = new List<Event>(item.Value).AsReadOnly();
             }
 
-            return d.AsReadOnly();
+            return new LogView(d, start, end);
         }
 
 

@@ -5,24 +5,20 @@ namespace LogParser.Engine
 
     internal class ParsableFile(IFileParser parser, FileInfo fileInfo)
     {
-        public void Parse(ConcurrentDictionary<DateTime, ConcurrentBag<Event>> data)
+        public async Task Parse(ConcurrentDictionary<DateTime, ConcurrentBag<Event>> data, CancellationToken token = default(CancellationToken))
         {
             void CallBack(Event ev)
             {
-
-               if (! data.TryAdd(ev.Id.DateTime, new ConcurrentBag<Event>()))
+                var addbag = new ConcurrentBag<Event>();
+                addbag.Add(ev);
+                if (!data.TryAdd(ev.Id.DateTime, addbag))
                 {     // Exists already
                     if (data.TryGetValue(ev.Id.DateTime, out var bag))
-                        {
                         bag.Add(ev);
-                    }
-               
-
                 }
-                      }
+            }
 
-
-            parser.Parse(fileInfo, CallBack);
+            await parser.Parse(fileInfo, token, CallBack);
         }
     }
 

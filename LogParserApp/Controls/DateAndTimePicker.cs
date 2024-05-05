@@ -22,6 +22,13 @@ namespace LogParserApp.Controls
 
             dtpDate.ValueChanged += DtpDate_ValueChanged;
             dtpTime.ValueChanged += DtpTime_ValueChanged;
+
+            dtpDate.CloseUp += DtpDate_CloseUp;
+        }
+
+        private void DtpDate_CloseUp(object? sender, EventArgs e)
+        {
+            ValueChanged?.Invoke(this, e);
         }
 
         private void DtpTime_ValueChanged(object? sender, EventArgs e)
@@ -31,6 +38,9 @@ namespace LogParserApp.Controls
 
         private void DtpDate_ValueChanged(object? sender, EventArgs e)
         {
+            if (dtpDate.Value.Date.Year < 2000)
+                return;
+
             ValueChanged?.Invoke(this, e);
         }
 

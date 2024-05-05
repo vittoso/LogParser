@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace LogParser.Engine
 {
@@ -6,25 +7,35 @@ namespace LogParser.Engine
     {
 
         const string SOURCE = "Errors";
-        public void Parse(FileInfo fileInfo, Action<Event> callBack)
+        public async Task Parse(FileInfo fileInfo, CancellationToken token, Action<Event> callBack)
         {
             using (StreamReader reader = fileInfo.OpenText())
             {
                 string? line;
                 DateTime accDateTime = DateTime.MinValue;
-                int? tid = null;
+                int? accTid = null;
+                string? accLocation = null;
+                LogLevel accLogLevel = LogLevel.None;
                 List<string> acc = [];
                 // Regular expression pattern to match the date and time format
-                string pattern = @"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
+                string dateTimePattern = @"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
+                // Create regular expression pattern to match log level
+                string logLevelPattern = @"\-\-\[(.*?)\]\-\-";
 
                 // Read and process each line until the end of the file
-                while ((line = reader.ReadLine()) != null)
+                while ((line = await reader.ReadLineAsync(token)) != null)
                 {
+                    string subLine = line;
+
+                    if (line.StartsWith("2024/04/24 15:4", StringComparison.OrdinalIgnoreCase))
+                      {
+                    }
                     // Check if the line starts with a date and time
-                    if (Regex.IsMatch(line, pattern))
+                    if (Regex.IsMatch(line, dateTimePattern))
                     {
+
                         // Extract the date and time string
-                        string dateTimeString = Regex.Match(line, pattern).Value;
+                        string dateTimeString = Regex.Match(line, dateTimePattern).Value;
 
                         // Parse the date and time string into a DateTime object
 
@@ -35,45 +46,80 @@ namespace LogParser.Engine
                             continue;
                         }
 
+                        subLine = line.Substring(dateTimeString.Length + 1);
+
+                        string? location = null;
+
+                        int idxLocationEnd = subLine.IndexOf('[');
+                        if (idxLocationEnd > 0)
+                        {
+                            location = subLine.Substring(0, idxLocationEnd - 1);
+
+                            subLine = subLine.Replace(location, string.Empty);
+                        }
+
+
                         // Parse TID
                         // Use regular expression to find the number after "TID"
-                        Match match = Regex.Match(line, @"\[TID:(\d+)\]");
+                        int? tid;
+                        Match match = Regex.Match(subLine, @"\[TID:(\d+)\]");
                         if (match.Success)
                         {
                             // Extract and print the number
                             tid = Convert.ToInt32(match.Groups[1].Value);
+                            subLine = subLine.Substring(0, match.Index);
                         }
                         else
                             tid = null;
 
-
-                        if (acc.Count != 0)
-                        {
-                            Event ev = Event.Create(accDateTime, fileInfo, SOURCE, tid, string.Join(Environment.NewLine, acc));
-                            accDateTime = DateTime.MinValue;
-                            acc.Clear();
-                            callBack(ev);
-                        }
+          
+                        TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accTid, ref accLocation, ref accLogLevel, acc);
                         accDateTime = dateTime;
-                        acc.Add(line);
+                        accTid = tid;
+                        accLocation = location;
+                        acc.Add(subLine);
                     }
                     // If the line does not start with a date and time, you can handle it accordingly
                     else
                     {
+                        // Use regular expression to find the log level
+                        Match match = Regex.Match(line, logLevelPattern);
+                        if (match.Success)
+                        {
+                           
+                            // Extract and print the log level
+                            string logLevel = match.Groups[1].Value;
+                            if (LogLevel.TryParse(typeof(LogLevel), logLevel, out var result))
+                            {
+                                accLogLevel = (LogLevel)result;
+                            }
+                            subLine = subLine.Substring(match.Index + match.Length +1);
+                        }
+
+
                         if (accDateTime != DateTime.MinValue)
-                            acc.Add(line);
+                            acc.Add(subLine);
                     }
                 }
 
-
-                if (acc.Count != 0)
-                {
-                    Event ev = Event.Create(accDateTime, fileInfo, SOURCE, tid, string.Join(Environment.NewLine, acc));
-                    accDateTime = DateTime.MinValue;
-                    acc.Clear();
-                    callBack(ev);
-                }
+                TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accTid, ref accLocation, ref accLogLevel, acc);
             }
+        }
+
+        private static bool TryEmitEvent(FileInfo fileInfo, Action<Event> callBack, ref DateTime accDateTime, ref int? accTid, ref string? accLocation, ref LogLevel accLogLevel, List<string> acc)
+        {
+            if (acc.Count != 0)
+            {
+                 Event ev = Event.Create(accDateTime, fileInfo, SOURCE, accLogLevel, accTid, accLocation, StringJoinHelper.JoinWithoutEmptyStrings(Environment.NewLine, acc));
+                accDateTime = DateTime.MinValue;
+                accTid = null;
+                accLocation = null;
+                accLogLevel = LogLevel.None;
+                acc.Clear();
+                callBack(ev);
+                return true;
+            }
+            return false;
         }
     }
 }
