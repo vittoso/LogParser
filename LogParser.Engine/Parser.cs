@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.IO;
 using System.Xml.Serialization;
 
 namespace LogParser.Engine
@@ -16,15 +17,25 @@ namespace LogParser.Engine
 
             data = new ConcurrentDictionary<DateTime, ConcurrentBag<Event>>();
         }
-
         public async Task StartParseFolder(string folderPath, CancellationToken token = default(CancellationToken))
         {
             if (parsingStarted)
                 throw new Exception("Parsing already started");
 
+            if (parsingStarted)
+                throw new Exception("Parsing already started");
+
             string[] files = Directory.GetFiles(folderPath);
 
-            List<FileInfo> fileInfos = new List<FileInfo>(files.Length);
+            if (!files.Any())
+                throw new Exception($"Invalid folder '{folderPath}': no files recognized");
+
+            await StartParseFiles(files, token);
+        }
+
+        public async Task StartParseFiles(IEnumerable<string> files, CancellationToken token = default(CancellationToken))
+        {
+            List<FileInfo> fileInfos = new List<FileInfo>();
             foreach (string file in files)
             {
                 FileInfo f = new FileInfo(file);
@@ -42,7 +53,7 @@ namespace LogParser.Engine
             }
 
             if (!fileInfos.Any())
-                throw new Exception($"Invalid folder '{folderPath}': no files recognized");
+                throw new Exception($"No files recognized");
 
             parsingStarted = true;
 

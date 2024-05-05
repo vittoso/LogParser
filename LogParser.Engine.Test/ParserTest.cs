@@ -38,5 +38,14 @@ namespace LogParser.Engine.Test
 
             var data = p.GetView(new DateTime(2024, 04, 24, 14, 10, 0), DateTime.MaxValue);
         }
+        [TestMethod]
+        public async Task ParseErrorsFile()
+        {
+            List<string> files = new List<string> {
+                Path.Combine(outputDir, "log", "Errors.log")
+            };
+            Parser p = new Parser();
+            await p.StartParseFiles(files);
+        }
     }
 }
