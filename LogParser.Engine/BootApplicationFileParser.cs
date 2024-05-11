@@ -16,54 +16,43 @@ namespace LogParser.Engine
                 string? accLocation = null;
                 List<string> acc = [];
                 // Regular expression pattern to match the date and time format
-                string? pattern = @"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}";
+                Regex patternRegex = new Regex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}");
 
                 // Read and process each line until the end of the file
                 while ((line = await reader.ReadLineAsync(token)) != null)
                 {
                     // Check if the line starts with a date and time
-                    if (Regex.IsMatch(line, pattern))
+                    if (patternRegex.IsMatch(line))
                     {
-                        string subLine = line;
                         // Extract the date and time string
-                        string dateTimeString = Regex.Match(line, pattern).Value;
+                        string dateTimeString = patternRegex.Match(line).Value;
 
                         // Parse the date and time string into a DateTime object
-
-                        if (!DateTime.TryParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
+                        if (DateTime.TryParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
                         {
-                            if (accDateTime != DateTime.MinValue)
-                                acc.Add(line);
-                            continue;
-                        }
+                            string subLine = line.Substring(dateTimeString.Length).TrimStart(':');
 
-                        string location = null;
-                        if (line.Length > dateTimeString.Length + 1)
+                            int locationEndIndex = subLine.IndexOf(';');
+                            var location = locationEndIndex >= 0 ? subLine.Substring(0, locationEndIndex) : null;
+
+                            if (locationEndIndex >= 0)
+                                subLine = subLine.Substring(locationEndIndex + 1).TrimEnd(';');
+
+                            TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accLocation, acc);
+
+                            accDateTime = dateTime;
+                            accLocation = location;
+                            acc.Add(subLine);
+                        }
+                        else
                         {
-                            subLine = line.Substring(dateTimeString.Length + 1);
-
-                            int idxLocationEnd = subLine.IndexOf(';');
-                            if (idxLocationEnd > 0)
-                                location = subLine.Substring(0, idxLocationEnd);
-
-                            subLine = subLine.Substring(idxLocationEnd + 1);
-
-                            if (subLine.EndsWith(';'))
-                                subLine = subLine.Substring(0, subLine.Length - 1);
+                            acc.Add(line);
                         }
-
-                        TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accLocation, acc);
-
-                        accDateTime = dateTime;
-                        accLocation = location;
-                        acc.Add(subLine);
                     }
                     // If the line does not start with a date and time, you can handle it accordingly
-                    else
-                    {
-                        if (accDateTime != DateTime.MinValue)
-                            acc.Add(line);
-                    }
+                    else if (accDateTime != DateTime.MinValue)
+                        acc.Add(line);
+
                 }
 
                 TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accLocation, acc);

@@ -26,7 +26,9 @@ namespace LogParser.Benchmarks
         public async Task Parse()
         {
             List<string> files = new List<string> {
-                Path.Combine(ExamplesPath, "Errors.log")
+                Path.Combine(ExamplesPath, "Errors.log"),
+                Path.Combine(ExamplesPath, "Errors.120.log"),
+                Path.Combine(ExamplesPath, "BootApplication.log")
             };
             Parser p = new Parser();
             await p.StartParseFiles(files);

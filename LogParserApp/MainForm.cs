@@ -63,7 +63,6 @@ namespace LogParserApp
                     sessionView.Init(CurrentSession);
                     sessionView.Enabled = true;
 
-
                 }
             }
             catch (Exception ex)

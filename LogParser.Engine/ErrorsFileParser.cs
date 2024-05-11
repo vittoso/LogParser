@@ -16,26 +16,26 @@ namespace LogParser.Engine
                 int? accTid = null;
                 string? accLocation = null;
                 LogLevel accLogLevel = LogLevel.None;
-                List<string> acc = [];
+                List<string> acc = new List<string>();
+
+                // Compile regex patterns outside the loop
                 // Regular expression pattern to match the date and time format
-                string dateTimePattern = @"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
+                Regex dateTimeRegex = new Regex(@"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3}");
                 // Create regular expression pattern to match log level
-                string logLevelPattern = @"\-\-\[(.*?)\]\-\-";
+                Regex logLevelRegex = new Regex(@"\-\-\[(.*?)\]\-\-");
+                // TID Regex
+                Regex tidRegex = new Regex(@"\[TID:(\d+)\]");
 
                 // Read and process each line until the end of the file
                 while ((line = await reader.ReadLineAsync(token)) != null)
                 {
                     string subLine = line;
 
-                    if (line.StartsWith("2024/04/24 15:4", StringComparison.OrdinalIgnoreCase))
-                      {
-                    }
                     // Check if the line starts with a date and time
-                    if (Regex.IsMatch(line, dateTimePattern))
+                    if (dateTimeRegex.IsMatch(line))
                     {
-
                         // Extract the date and time string
-                        string dateTimeString = Regex.Match(line, dateTimePattern).Value;
+                        string dateTimeString = dateTimeRegex.Match(line).Value;
 
                         // Parse the date and time string into a DateTime object
 
@@ -58,11 +58,10 @@ namespace LogParser.Engine
                             subLine = subLine.Replace(location, string.Empty);
                         }
 
-
                         // Parse TID
                         // Use regular expression to find the number after "TID"
                         int? tid;
-                        Match match = Regex.Match(subLine, @"\[TID:(\d+)\]");
+                        Match match = tidRegex.Match(subLine);
                         if (match.Success)
                         {
                             // Extract and print the number
@@ -72,7 +71,7 @@ namespace LogParser.Engine
                         else
                             tid = null;
 
-          
+
                         TryEmitEvent(fileInfo, callBack, ref accDateTime, ref accTid, ref accLocation, ref accLogLevel, acc);
                         accDateTime = dateTime;
                         accTid = tid;
@@ -83,17 +82,17 @@ namespace LogParser.Engine
                     else
                     {
                         // Use regular expression to find the log level
-                        Match match = Regex.Match(line, logLevelPattern);
+                        Match match = logLevelRegex.Match(line);
                         if (match.Success)
                         {
-                           
+
                             // Extract and print the log level
                             string logLevel = match.Groups[1].Value;
                             if (LogLevel.TryParse(typeof(LogLevel), logLevel, out var result))
                             {
                                 accLogLevel = (LogLevel)result;
                             }
-                            subLine = subLine.Substring(match.Index + match.Length +1);
+                            subLine = subLine.Substring(match.Index + match.Length + 1);
                         }
 
 
@@ -110,7 +109,7 @@ namespace LogParser.Engine
         {
             if (acc.Count != 0)
             {
-                 Event ev = Event.Create(accDateTime, fileInfo, SOURCE, accLogLevel, accTid, accLocation, StringJoinHelper.JoinWithoutEmptyStrings(Environment.NewLine, acc));
+                Event ev = Event.Create(accDateTime, fileInfo, SOURCE, accLogLevel, accTid, accLocation, StringJoinHelper.JoinWithoutEmptyStrings(Environment.NewLine, acc));
                 accDateTime = DateTime.MinValue;
                 accTid = null;
                 accLocation = null;

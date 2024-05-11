@@ -88,6 +88,23 @@ namespace LogParser.Engine
             }
         }
 
+        public (DateTime start, DateTime end) GetTotalDateTimeRange()
+        {
+            if (data == null || data.Count <= 0)
+                return (DateTime.MinValue, DateTime.MaxValue);
+
+            DateTime start = DateTime.MaxValue;
+            DateTime end = DateTime.MinValue;
+            foreach (var item in data.Keys)
+            {
+                if (start > item) start = item;
+                if (end < item) end = item;
+            }
+
+            return (start, end);
+        }
+
+
         public LogView GetView(DateTime start, DateTime end)
         {
             Dictionary<DateTime, IReadOnlyList<Event>> d = new();

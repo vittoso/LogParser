@@ -27,5 +27,10 @@ namespace LogParserApp
         {
             return p.GetView(start, end);
         }
+
+        public (DateTime start, DateTime end) GetTotalDateTimeRange()
+        {
+            return p.GetTotalDateTimeRange();
+        }
     }
 }
