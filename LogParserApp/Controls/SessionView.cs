@@ -41,6 +41,7 @@ namespace LogParserApp.Controls
             dataGridView1.AllowUserToAddRows = false;
             dataGridView1.AllowUserToDeleteRows = false;
             dataGridView1.AllowUserToResizeRows = false;
+            dataGridView1.ReadOnly = true;
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView1.CellFormatting += DataGridView1_CellFormatting;
             dataGridView1.RowPrePaint += DataGridView1_RowPrePaint;
