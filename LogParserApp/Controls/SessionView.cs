@@ -24,8 +24,13 @@ namespace LogParserApp.Controls
         private DataGridViewColumn colLogLevel;
         private DataGridViewColumn colLocation;
         private DataGridViewColumn colCtx;
-        private LogView view;
+        private DataCache dataCache;
         private readonly string defaultDateTimeFormatWithMilliseconds;
+
+        // Track current sorting column and order
+        private DataGridViewColumn? currentSortColumn = null;
+        private ListSortDirection currentSortDirection = ListSortDirection.Descending;
+
 
         public SessionView()
         {
@@ -42,10 +47,13 @@ namespace LogParserApp.Controls
             dataGridView1.AllowUserToDeleteRows = false;
             dataGridView1.AllowUserToResizeRows = false;
             dataGridView1.ReadOnly = true;
+            dataGridView1.VirtualMode = true;
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView1.CellFormatting += DataGridView1_CellFormatting;
             dataGridView1.RowPrePaint += DataGridView1_RowPrePaint;
             dataGridView1.SelectionChanged += DataGridView1_SelectionChanged;
+            dataGridView1.CellValueNeeded += DataGridView1_CellValueNeeded;
+            dataGridView1.ColumnHeaderMouseClick += DataGridView1_ColumnHeaderMouseClick;
             dtpStart.ValueChanged += DtpStart_ValueChanged;
             dtpEnd.ValueChanged += DtpEnd_ValueChanged;
 
@@ -58,6 +66,92 @@ namespace LogParserApp.Controls
 
             InitializeDataGridView();
 
+        }
+
+        private void DataGridView1_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            // Determine the new sorting column and direction
+            if (currentSortColumn != null && e.ColumnIndex == currentSortColumn.Index)
+            {
+                currentSortDirection = currentSortDirection == ListSortDirection.Ascending
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
+            }
+            else
+            {
+                currentSortColumn = dataGridView1.Columns[e.ColumnIndex];
+                currentSortDirection = ListSortDirection.Ascending;
+            }
+
+            // Trigger sorting
+            ApplySort();
+            dataGridView1.Invalidate();
+        }
+
+        private void ApplySort()
+        {
+            var column = currentSortColumn;
+
+            if (column == colCtx)
+                dataCache.Sort(ev => ev, currentSortDirection);
+            else if (column == colId)
+                dataCache.Sort(ev => ev.Id, currentSortDirection);
+            else if (column == colTimestamp)
+                dataCache.Sort(ev => ev.Id.DateTime, currentSortDirection);
+            else if (column == colLogLevel)
+                dataCache.Sort(ev => ev.LogLevel, currentSortDirection);
+            else if (column == colSource)
+                dataCache.Sort(ev => ev.Source, currentSortDirection);
+            else if (column == colTid)
+                dataCache.Sort(ev => ev.TID, currentSortDirection);
+            else if (column == colLocation)
+                dataCache.Sort(ev => ev.Location, currentSortDirection);
+            else if (column == colMessage)
+                dataCache.Sort(ev => ev.Message, currentSortDirection);
+
+
+            // Update header appearance
+            UpdateHeaderAppearance();
+        }
+
+        private void UpdateHeaderAppearance()
+        {
+            // Clear previous sorting indicators
+            foreach (DataGridViewColumn column in dataGridView1.Columns)
+            {
+                column.HeaderCell.SortGlyphDirection = SortOrder.None;
+            }
+
+            // Set sorting indicator on the current sorting column
+            if (currentSortColumn != null && currentSortColumn.Index < dataGridView1.Columns.Count)
+            {
+                currentSortColumn.HeaderCell.SortGlyphDirection =
+                    currentSortDirection == ListSortDirection.Ascending ? SortOrder.Ascending : SortOrder.Descending;
+            }
+        }
+
+        private void DataGridView1_CellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
+        {
+            var ev = dataCache.GetEventAtRow(e.RowIndex);
+
+            var column = dataGridView1.Columns[e.ColumnIndex];
+
+            if (column == colCtx)
+                e.Value = ev;
+            else if (column == colId)
+                e.Value = ev.Id;
+            else if (column == colTimestamp)
+                e.Value = ev.Id.DateTime;
+            else if (column == colLogLevel)
+                e.Value = ev.LogLevel;
+            else if (column == colSource)
+                e.Value = ev.Source;
+            else if (column == colTid)
+                e.Value = ev.TID;
+            else if (column == colLocation)
+                e.Value = ev.Location;
+            else if (column == colMessage)
+                e.Value = ev.Message;
         }
 
         private void DataGridView1_SelectionChanged(object? sender, EventArgs e)
@@ -115,8 +209,8 @@ namespace LogParserApp.Controls
         {
             this.currentSession = currentSession;
 
-            var view = currentSession.GetView(dtpStart.Value, dtpEnd.Value);
-            ShowView(view);
+            this.dataCache = new DataCache(currentSession.GetView(dtpStart.Value, dtpEnd.Value));
+            ShowView();
         }
 
         private void InitializeDataGridView()
@@ -148,63 +242,77 @@ namespace LogParserApp.Controls
             dataGridView1.Columns.Add("Message", "Message");
             colMessage = dataGridView1.Columns["Message"];
             colMessage.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+
+            currentSortColumn = colTimestamp;
+            currentSortDirection = ListSortDirection.Descending;
+
         }
 
         private void DtpEnd_ValueChanged(object? sender, EventArgs e)
         {
-            if (currentSession != null && dtpEnd.Value != this.view?.End)
+            if (currentSession != null && dtpEnd.Value != this.dataCache?.End)
             {
-                this.view = currentSession.GetView(dtpStart.Value, dtpEnd.Value);
-                ShowView(view);
+                this.dataCache = new DataCache(currentSession.GetView(dtpStart.Value, dtpEnd.Value));
+                ShowView();
             }
         }
 
         private void DtpStart_ValueChanged(object? sender, EventArgs e)
         {
-            if (currentSession != null && dtpStart.Value != this.view?.Start)
+            if (currentSession != null && dtpStart.Value != this.dataCache?.Start)
             {
-                this.view = currentSession.GetView(dtpStart.Value, dtpEnd.Value);
-                ShowView(view);
+                this.dataCache = new DataCache(currentSession.GetView(dtpStart.Value, dtpEnd.Value));
+                ShowView();
             }
         }
 
-        private void ShowView(LogView view)
+        private void ShowView(/*LogView view*/)
         {
             dataGridView1.SuspendLayout(); // Suspend layout updates
 
             dataGridView1.Rows.Clear();
-            List<DataGridViewRow> rowsToAdd = new List<DataGridViewRow>();
-            foreach (var ev in view.Values.SelectMany(a => a))
-            {
-                rowsToAdd.Add(new DataGridViewRow
+            /*    List<DataGridViewRow> rowsToAdd = new List<DataGridViewRow>();
+                foreach (var ev in view.Values.SelectMany(a => a))
                 {
-                    Cells =
+                    rowsToAdd.Add(new DataGridViewRow
                     {
-                        new DataGridViewTextBoxCell {Value = ev},
-                        new DataGridViewTextBoxCell {Value = ev.Id},
-                        new DataGridViewTextBoxCell {Value = ev.Id.DateTime},
-                        new DataGridViewTextBoxCell {Value = ev.LogLevel},
-                        new DataGridViewTextBoxCell {Value = ev.Source},
-                        new DataGridViewTextBoxCell {Value = ev.TID},
-                        new DataGridViewTextBoxCell {Value = ev.Location},
-                        new DataGridViewTextBoxCell {Value = ev.Message}
-                    }
-                });
-            }
+                        Cells =
+                        {
+                            new DataGridViewTextBoxCell {Value = ev},
+                            new DataGridViewTextBoxCell {Value = ev.Id},
+                            new DataGridViewTextBoxCell {Value = ev.Id.DateTime},
+                            new DataGridViewTextBoxCell {Value = ev.LogLevel},
+                            new DataGridViewTextBoxCell {Value = ev.Source},
+                            new DataGridViewTextBoxCell {Value = ev.TID},
+                            new DataGridViewTextBoxCell {Value = ev.Location},
+                            new DataGridViewTextBoxCell {Value = ev.Message}
+                        }
+                    });
+                }
 
-            dataGridView1.Rows.AddRange(rowsToAdd.ToArray());
+                dataGridView1.Rows.AddRange(rowsToAdd.ToArray());
 
-            if (dataGridView1.Rows.Count > 0)
+                if (dataGridView1.Rows.Count > 0)
+                {
+                    dataGridView1.Sort(colTimestamp, ListSortDirection.Ascending);
+                    // Select the last row after sorting
+                    dataGridView1.Rows[dataGridView1.Rows.Count - 1].Selected = true;
+
+                    int index = dataGridView1.SelectedRows[0].Index;
+                    dataGridView1.FirstDisplayedScrollingRowIndex = index;
+                }*/
+
+            if (dataCache.RowCount > 0)
             {
-                dataGridView1.Sort(colTimestamp, ListSortDirection.Ascending);
-                // Select the last row after sorting
-                dataGridView1.Rows[dataGridView1.Rows.Count - 1].Selected = true;
+                ApplySort();
 
+                dataGridView1.RowCount = dataCache.RowCount;
+                dataGridView1.Rows[dataCache.RowCount - 1].Selected = true;
                 int index = dataGridView1.SelectedRows[0].Index;
                 dataGridView1.FirstDisplayedScrollingRowIndex = index;
             }
             dataGridView1.ResumeLayout(); // Resume layout updates
-
+      
         }
     }
 }
